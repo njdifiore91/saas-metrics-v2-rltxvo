@@ -1,0 +1,388 @@
+openapi: 3.0.3
+info:
+  title: Metrics Service API
+  version: 1.0.0
+  description: |
+    API for managing startup metrics and benchmarks with comprehensive data validation and security.
+    Provides endpoints for metric definitions, values, benchmarks and comparisons.
+
+servers:
+  - url: /api/v1
+    description: Metrics Service API v1
+
+paths:
+  /metrics:
+    get:
+      summary: List metric definitions
+      description: Retrieve paginated list of metric definitions with optional filters
+      operationId: getMetricDefinitions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/MetricType'
+        - name: timeframe
+          in: query
+          schema:
+            $ref: '#/components/schemas/MetricTimeframe'
+      responses:
+        '200':
+          description: List of metric definitions
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+            X-Rate-Limit-Remaining:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MetricDefinition'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+    post:
+      summary: Create metric definition
+      description: Create a new metric definition with validation rules
+      operationId: createMetricDefinition
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricDefinitionInput'
+      responses:
+        '201':
+          description: Metric definition created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricDefinition'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /metrics/{metricId}/values:
+    post:
+      summary: Record metric value
+      description: Record a new metric value for a company
+      operationId: recordMetricValue
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: metricId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricValueInput'
+      responses:
+        '201':
+          description: Metric value recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricValue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /benchmarks:
+    get:
+      summary: Get benchmark data
+      description: Retrieve benchmark data for specific metrics and revenue ranges
+      operationId: getBenchmarkData
+      parameters:
+        - name: metricType
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/MetricType'
+        - name: revenueRangeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: timeframe
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/MetricTimeframe'
+      responses:
+        '200':
+          description: Benchmark data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkData'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    MetricType:
+      type: string
+      enum: [RETENTION, EFFICIENCY, SALES, FINANCIAL]
+
+    MetricUnit:
+      type: string
+      enum: [PERCENTAGE, CURRENCY, RATIO, MONTHS]
+
+    MetricTimeframe:
+      type: string
+      enum: [MONTHLY, QUARTERLY, ANNUAL]
+
+    MetricDefinition:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - type
+        - unit
+        - timeframe
+        - validationRules
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        type:
+          $ref: '#/components/schemas/MetricType'
+        unit:
+          $ref: '#/components/schemas/MetricUnit'
+        timeframe:
+          $ref: '#/components/schemas/MetricTimeframe'
+        formula:
+          type: string
+        validationRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricValidationRule'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MetricValidationRule:
+      type: object
+      required:
+        - type
+        - description
+        - errorMessage
+      properties:
+        type:
+          type: string
+          enum: [RANGE, CUSTOM]
+        minValue:
+          type: number
+        maxValue:
+          type: number
+        description:
+          type: string
+        customValidation:
+          type: string
+        errorMessage:
+          type: string
+
+    MetricValueInput:
+      type: object
+      required:
+        - companyId
+        - value
+        - timeframe
+      properties:
+        companyId:
+          type: string
+          format: uuid
+        value:
+          type: number
+        timeframe:
+          $ref: '#/components/schemas/MetricTimeframe'
+
+    MetricValue:
+      type: object
+      required:
+        - id
+        - metricId
+        - companyId
+        - value
+        - timeframe
+        - recordedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        metricId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        value:
+          type: number
+        timeframe:
+          $ref: '#/components/schemas/MetricTimeframe'
+        recordedAt:
+          type: string
+          format: date-time
+
+    BenchmarkData:
+      type: object
+      required:
+        - id
+        - benchmarkId
+        - p10Value
+        - p25Value
+        - p50Value
+        - p75Value
+        - p90Value
+        - sampleSize
+        - confidenceLevel
+      properties:
+        id:
+          type: string
+          format: uuid
+        benchmarkId:
+          type: string
+          format: uuid
+        p10Value:
+          type: number
+        p25Value:
+          type: number
+        p50Value:
+          type: number
+        p75Value:
+          type: number
+        p90Value:
+          type: number
+        sampleSize:
+          type: integer
+          minimum: 1
+        confidenceLevel:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    PaginationMeta:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItems:
+          type: integer
+        itemsPerPage:
+          type: integer
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Metrics
+    description: Metric definition and value management
+  - name: Benchmarks
+    description: Benchmark data and comparisons
