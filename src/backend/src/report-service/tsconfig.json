@@ -1,0 +1,41 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "paths": {
+      "@shared/*": ["../../shared/*"],
+      "@report/*": ["./src/*"]
+    },
+    "types": ["node", "jest"],
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "target": "ES2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "dist",
+    "node_modules",
+    "coverage"
+  ],
+  "references": [
+    {
+      "path": "../../shared"
+    }
+  ]
+}
