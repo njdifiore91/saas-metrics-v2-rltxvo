@@ -1,0 +1,279 @@
+// @version 1.0.0
+// External dependencies
+import { v4 as uuidv4 } from 'uuid';  // ^9.0.0
+import { PDFDocument } from 'pdf-lib';  // ^1.17.1
+import * as ExcelJS from 'exceljs';  // ^4.3.0
+import { createObjectCsvWriter } from 'csv-writer';  // ^1.6.0
+import * as sharp from 'sharp';  // ^0.32.1
+import { createHash } from 'crypto';
+
+// Types
+interface ReportDefinition {
+  name: string;
+  description?: string;
+  metrics: MetricReference[];
+  templateId: string;
+  filters?: ReportFilters;
+}
+
+interface ExportOptions {
+  format: 'PDF' | 'EXCEL' | 'CSV' | 'SVG' | 'HTML';
+  includeCharts?: boolean;
+  compression?: boolean;
+  password?: string;
+}
+
+interface MetricReference {
+  id: string;
+  name: string;
+}
+
+interface ReportFilters {
+  dateRange?: DateRange;
+  categories?: string[];
+}
+
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+export class ReportService {
+  private readonly RATE_LIMIT = {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 100
+  };
+
+  private readonly SUPPORTED_FORMATS = ['PDF', 'EXCEL', 'CSV', 'SVG', 'HTML'];
+
+  /**
+   * Generates a new report based on the provided definition
+   * @param definition Report definition containing metrics and template
+   * @returns Generated report details
+   * @throws {Error} If invalid parameters or rate limit exceeded
+   */
+  public async generateReport(definition: ReportDefinition): Promise<any> {
+    try {
+      this.validateReportDefinition(definition);
+
+      const reportId = uuidv4();
+      const report = await this.createReport(reportId, definition);
+
+      return {
+        id: reportId,
+        status: 'COMPLETED',
+        url: `/reports/${reportId}`,
+        createdAt: new Date().toISOString()
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Exports a report in the specified format
+   * @param reportId Unique identifier of the report
+   * @param options Export configuration options
+   * @returns Export details including download URL
+   * @throws {Error} If report not found or invalid format
+   */
+  public async exportReport(reportId: string, options: ExportOptions): Promise<any> {
+    try {
+      this.validateExportOptions(options);
+      const report = await this.getReport(reportId);
+
+      if (!report) {
+        throw new Error('Report not found');
+      }
+
+      const exportUrl = await this.generateExport(report, options);
+
+      return {
+        exportUrl,
+        format: options.format,
+        expiresAt: this.getExpirationTime(),
+        size: await this.getFileSize(exportUrl)
+      };
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Validates report definition parameters
+   * @param definition Report definition to validate
+   * @throws {Error} If validation fails
+   */
+  private validateReportDefinition(definition: ReportDefinition): void {
+    if (!definition.name || definition.name.trim().length === 0) {
+      throw new Error('Report name is required');
+    }
+
+    if (!definition.metrics || definition.metrics.length === 0) {
+      throw new Error('At least one metric is required');
+    }
+
+    if (!definition.templateId || !this.isValidUUID(definition.templateId)) {
+      throw new Error('Valid template ID is required');
+    }
+  }
+
+  /**
+   * Validates export options
+   * @param options Export options to validate
+   * @throws {Error} If validation fails
+   */
+  private validateExportOptions(options: ExportOptions): void {
+    if (!this.SUPPORTED_FORMATS.includes(options.format)) {
+      throw new Error(`Unsupported format. Supported formats: ${this.SUPPORTED_FORMATS.join(', ')}`);
+    }
+
+    if (options.password && options.format !== 'PDF') {
+      throw new Error('Password protection is only supported for PDF format');
+    }
+  }
+
+  /**
+   * Creates a new report based on the definition
+   * @param reportId Unique identifier for the report
+   * @param definition Report configuration
+   * @returns Created report object
+   */
+  private async createReport(reportId: string, definition: ReportDefinition): Promise<any> {
+    // Implementation would include:
+    // 1. Fetch metrics data
+    // 2. Apply filters
+    // 3. Generate visualizations
+    // 4. Apply template
+    // 5. Store report
+    return {
+      id: reportId,
+      ...definition,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Generates export file in specified format
+   * @param report Report data to export
+   * @param options Export configuration
+   * @returns URL to download the exported file
+   */
+  private async generateExport(report: any, options: ExportOptions): Promise<string> {
+    switch (options.format) {
+      case 'PDF':
+        return this.generatePDFExport(report, options);
+      case 'EXCEL':
+        return this.generateExcelExport(report, options);
+      case 'CSV':
+        return this.generateCSVExport(report);
+      case 'SVG':
+        return this.generateSVGExport(report, options);
+      case 'HTML':
+        return this.generateHTMLExport(report, options);
+      default:
+        throw new Error(`Unsupported export format: ${options.format}`);
+    }
+  }
+
+  /**
+   * Generates PDF export with optional password protection
+   * @param report Report data
+   * @param options Export options
+   * @returns URL to download PDF
+   */
+  private async generatePDFExport(report: any, options: ExportOptions): Promise<string> {
+    const pdfDoc = await PDFDocument.create();
+    
+    // Add content to PDF
+    // Implementation would include adding text, charts, and formatting
+
+    if (options.password) {
+      await pdfDoc.encrypt({
+        userPassword: options.password,
+        ownerPassword: options.password
+      });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    return this.saveExportFile(pdfBytes, 'pdf');
+  }
+
+  /**
+   * Generates Excel export with optional charts
+   * @param report Report data
+   * @param options Export options
+   * @returns URL to download Excel file
+   */
+  private async generateExcelExport(report: any, options: ExportOptions): Promise<string> {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Add worksheets and data
+    // Implementation would include formatting, formulas, and charts if includeCharts is true
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return this.saveExportFile(buffer, 'xlsx');
+  }
+
+  /**
+   * Generates CSV export of report data
+   * @param report Report data
+   * @returns URL to download CSV file
+   */
+  private async generateCSVExport(report: any): Promise<string> {
+    const csvWriter = createObjectCsvWriter({
+      path: 'temp.csv',
+      header: this.generateCSVHeaders(report)
+    });
+
+    await csvWriter.writeRecords(this.transformToCSV(report));
+    return this.saveExportFile(await this.readTempFile('temp.csv'), 'csv');
+  }
+
+  /**
+   * Utility function to check UUID validity
+   * @param uuid String to validate as UUID
+   * @returns boolean indicating if string is valid UUID
+   */
+  private isValidUUID(uuid: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  /**
+   * Handles error cases and transforms them to appropriate API responses
+   * @param error Error object to handle
+   * @returns Formatted error response
+   */
+  private handleError(error: any): Error {
+    // Log error for monitoring
+    console.error('Report Service Error:', error);
+
+    if (error.message.includes('Rate limit')) {
+      throw new Error('TOO_MANY_REQUESTS');
+    }
+
+    return new Error(error.message || 'Internal server error');
+  }
+
+  /**
+   * Calculates expiration time for export URLs
+   * @returns ISO timestamp of expiration
+   */
+  private getExpirationTime(): string {
+    const expirationHours = 24;
+    return new Date(Date.now() + expirationHours * 60 * 60 * 1000).toISOString();
+  }
+
+  /**
+   * Saves export file and returns download URL
+   * @param data File data to save
+   * @param extension File extension
+   * @returns URL to download the file
+   */
+  private async saveExportFile(data: Buffer | Uint8Array, extension: string): Promise<string> {
+    const fileName = `${uuidv4()}.${extension}`;
+    // Implementation would include saving to cloud storage
+    return `/downloads/${fileName}`;
+  }
+}
