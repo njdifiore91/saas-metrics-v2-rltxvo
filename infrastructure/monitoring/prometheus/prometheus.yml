@@ -1,0 +1,123 @@
+# Prometheus Configuration v2.45.0
+# Primary configuration file for the Startup Metrics Benchmarking Platform monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    environment: production
+    region: us-east-1
+    platform: startup-metrics
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "rules.yml"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        targets:
+          - "alertmanager:9093"
+      timeout: 5s
+      scheme: http
+
+# Scrape configurations for monitoring platform services
+scrape_configs:
+  # API Gateway - Higher frequency monitoring due to critical path
+  - job_name: api-gateway
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    static_configs:
+      - targets: ['api-gateway:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: api-gateway
+
+  # Authentication Service
+  - job_name: auth-service
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['auth-service:8081']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: auth-service
+
+  # Metrics Service
+  - job_name: metrics-service
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['metrics-service:8082']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: metrics-service
+
+  # Report Generation Service
+  - job_name: report-service
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 20s
+    static_configs:
+      - targets: ['report-service:8083']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: report-service
+
+  # Admin Service - Lower frequency due to less critical nature
+  - job_name: admin-service
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['admin-service:8084']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: admin-service
+
+  # PostgreSQL Database Monitoring
+  - job_name: postgresql
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: postgresql
+
+  # Redis Cache Monitoring
+  - job_name: redis
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: redis
+
+  # Node Exporter for Host Metrics
+  - job_name: node
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: host-metrics
