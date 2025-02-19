@@ -1,0 +1,225 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "datasource": "Prometheus",
+        "expr": "changes(process_start_time_seconds{job=\"metrics-service\"}[$interval])",
+        "name": "Deployments"
+      },
+      {
+        "datasource": "Prometheus",
+        "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"metrics-service\"}[$interval])) > 0.2",
+        "name": "SLA Breaches"
+      }
+    ]
+  },
+  "title": "Metrics Service Dashboard",
+  "uid": "metrics-service-dashboard",
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(metrics_service_up, instance)"
+      },
+      {
+        "name": "interval",
+        "type": "interval",
+        "values": ["30s", "1m", "5m", "10m", "30m", "1h"]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Service Health",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "up{job=\"metrics-service\"}",
+          "legendFormat": "Service Status"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": null,
+            "color": "red"
+          },
+          {
+            "value": 1,
+            "color": "green"
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "title": "Response Time SLA",
+      "type": "gauge",
+      "datasource": "Prometheus", 
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"metrics-service\"}[$interval]))",
+          "legendFormat": "95th Percentile"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": null,
+            "color": "green"
+          },
+          {
+            "value": 0.1,
+            "color": "yellow"
+          },
+          {
+            "value": 0.2,
+            "color": "red"
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 6,
+        "y": 0
+      }
+    },
+    {
+      "title": "Concurrent Users",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_active{job=\"metrics-service\"}[$interval]))",
+          "legendFormat": "Active Users"
+        }
+      ],
+      "alert": {
+        "name": "High Concurrency",
+        "conditions": [
+          {
+            "evaluator": {
+              "type": "gt",
+              "params": [1000]
+            }
+          }
+        ],
+        "frequency": "1m",
+        "handler": 1
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Users",
+          "min": 0
+        }
+      ]
+    },
+    {
+      "title": "Metric Calculation Accuracy",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "metric_calculation_accuracy_percentage{job=\"metrics-service\"}",
+          "legendFormat": "Calculation Accuracy"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": null,
+            "color": "red"
+          },
+          {
+            "value": 99.9,
+            "color": "green"
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job=\"metrics-service\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=\"metrics-service\"}[5m])",
+          "legendFormat": "Error Rate"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "yaxes": [
+        {
+          "format": "percentunit",
+          "label": "Error Rate",
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "title": "Memory Usage",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"metrics-service\"} / 1024 / 1024",
+          "legendFormat": "Memory (MB)"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "yaxes": [
+        {
+          "format": "mbytes",
+          "label": "Memory Usage",
+          "min": 0
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": ["metrics-service", "monitoring"],
+  "timezone": "browser",
+  "editable": true,
+  "hideControls": false,
+  "links": []
+}
