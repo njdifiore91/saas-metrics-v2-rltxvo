@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Startup Metrics Benchmarking Platform - Comprehensive benchmark data across key startup performance metrics">
+    <meta name="theme-color" content="#151e2d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Open Graph tags -->
+    <meta property="og:title" content="Startup Metrics Benchmarking Platform">
+    <meta property="og:description" content="Comprehensive benchmark data across key startup performance metrics">
+    <meta property="og:type" content="website">
+
+    <!-- Security headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https://api.startup-metrics.com;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+
+    <title>Startup Metrics Benchmarking Platform</title>
+
+    <!-- Preconnect to API domain -->
+    <link rel="preconnect" href="https://api.startup-metrics.com">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/src/assets/images/favicon.ico">
+
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/src/assets/styles/global.css" as="style">
+    <link rel="modulepreload" href="/src/main.tsx" as="script">
+
+    <!-- Global styles -->
+    <link rel="stylesheet" href="/src/assets/styles/global.css">
+</head>
+<body>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#root" class="skip-link">
+        Skip to main content
+    </a>
+
+    <!-- Root element for React application -->
+    <div id="root" role="main" aria-live="polite"></div>
+
+    <!-- Fallback for disabled JavaScript -->
+    <noscript role="alert" aria-live="assertive">
+        You need to enable JavaScript to run this application.
+    </noscript>
+
+    <!-- ARIA live region for dynamic announcements -->
+    <div id="aria-live-region" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Application entry point -->
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
