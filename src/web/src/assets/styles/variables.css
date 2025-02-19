@@ -1,0 +1,114 @@
+/* @fontsource/inter v4.5.0 */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/700.css';
+
+:root {
+  /* Color System - Brand Colors */
+  --color-primary: #151e2d;
+  --color-primary-hover: #1a2436;
+  --color-primary-active: #121a27;
+  --color-secondary: #46608C;
+  --color-accent: #168947;
+
+  /* Color System - Background Colors */
+  --color-background: #DBEAAC;
+  --color-surface: #FFFFFF;
+
+  /* Color System - Text Colors */
+  --color-text: #0D3330;
+  --color-text-secondary: #4A5568;
+
+  /* Color System - Semantic Colors */
+  --color-success: #168947;
+  --color-error: #DC2626;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+
+  /* Typography - Font Families */
+  --font-family-primary: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Typography - Font Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* Typography - Font Sizes */
+  --font-size-base: 16px;
+  --line-height-base: 1.5;
+
+  /* Typography - Scale (calculated from base) */
+  --font-size-xs: calc(var(--font-size-base) * 0.75);    /* 12px */
+  --font-size-sm: calc(var(--font-size-base) * 0.875);   /* 14px */
+  --font-size-md: var(--font-size-base);                 /* 16px */
+  --font-size-lg: calc(var(--font-size-base) * 1.125);   /* 18px */
+  --font-size-xl: calc(var(--font-size-base) * 1.25);    /* 20px */
+  --font-size-2xl: calc(var(--font-size-base) * 1.5);    /* 24px */
+  --font-size-3xl: calc(var(--font-size-base) * 1.875);  /* 30px */
+  --font-size-4xl: calc(var(--font-size-base) * 2.25);   /* 36px */
+
+  /* Spacing - 8px Grid System */
+  --spacing-base: 8px;
+  --spacing-small: calc(var(--spacing-base) * 1);      /* 8px */
+  --spacing-medium: calc(var(--spacing-base) * 2);     /* 16px */
+  --spacing-large: calc(var(--spacing-base) * 3);      /* 24px */
+  --spacing-xlarge: calc(var(--spacing-base) * 4);     /* 32px */
+  --spacing-2xl: calc(var(--spacing-base) * 6);        /* 48px */
+  --spacing-3xl: calc(var(--spacing-base) * 8);        /* 64px */
+
+  /* Breakpoints - Responsive Design */
+  --breakpoint-mobile: 320px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+  --breakpoint-wide: 1440px;
+
+  /* Border Radius */
+  --border-radius-small: 4px;
+  --border-radius-medium: 6px;
+  --border-radius-large: 8px;
+  --border-radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Z-index Scale */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-normal: 250ms;
+  --transition-slow: 350ms;
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Mode Theme Variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #1a2436;
+    --color-primary-hover: #1f2b42;
+    --color-primary-active: #151e2d;
+    --color-background: #1a1a1a;
+    --color-surface: #2d2d2d;
+    --color-text: #ffffff;
+    --color-text-secondary: #a0aec0;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  :root {
+    --color-primary: #000000;
+    --color-text: #000000;
+    --color-background: #ffffff;
+    --color-surface: #ffffff;
+    --color-text-secondary: #000000;
+  }
+}
