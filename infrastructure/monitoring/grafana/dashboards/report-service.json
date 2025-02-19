@@ -1,0 +1,232 @@
+{
+  "title": "Report Service Dashboard",
+  "uid": "report-service-metrics",
+  "tags": ["report-service", "monitoring", "metrics", "performance"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Service Health Overview",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"report-service\"}",
+          "legendFormat": "Service Status"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"report-service\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"report-service\"}[5m])) * 100",
+          "legendFormat": "Error Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Down", "color": "red" },
+                "1": { "text": "Up", "color": "green" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "green" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Report Generation Performance",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(report_generation_duration_seconds_bucket{job=\"report-service\"}[5m]))",
+          "legendFormat": "95th Percentile Latency"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(report_generation_duration_seconds_bucket{job=\"report-service\"}[5m]))",
+          "legendFormat": "Median Latency"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "Duration"
+        }
+      ]
+    },
+    {
+      "title": "Resource Utilization",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"report-service\"} / 1024 / 1024",
+          "legendFormat": "Memory Usage (MB)"
+        },
+        {
+          "expr": "rate(process_cpu_seconds_total{job=\"report-service\"}[5m]) * 100",
+          "legendFormat": "CPU Usage (%)"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Usage"
+        }
+      ]
+    },
+    {
+      "title": "Request Traffic",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"report-service\"}[5m])) by (status)",
+          "legendFormat": "{{status}} Requests"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Requests/sec"
+        }
+      ]
+    },
+    {
+      "title": "Storage Operations",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "rate(storage_operations_total{job=\"report-service\"}[5m])",
+          "legendFormat": "{{operation}} Operations"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "ops",
+          "label": "Operations/sec"
+        }
+      ]
+    },
+    {
+      "title": "Concurrent Users",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(report_service_active_users)",
+          "legendFormat": "Active Users"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 800, "color": "yellow" },
+              { "value": 1000, "color": "red" }
+            ]
+          },
+          "min": 0,
+          "max": 1200,
+          "unit": "users"
+        }
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(up{job=\"report-service\"}, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": false,
+        "sort": 1
+      },
+      {
+        "name": "timeRange",
+        "type": "interval",
+        "options": [
+          { "text": "Last 30m", "value": "30m" },
+          { "text": "Last 1h", "value": "1h" },
+          { "text": "Last 6h", "value": "6h" },
+          { "text": "Last 12h", "value": "12h" },
+          { "text": "Last 24h", "value": "24h" }
+        ],
+        "current": {
+          "text": "Last 6h",
+          "value": "6h"
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "links": [],
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "datasource": "Prometheus",
+        "expr": "changes(process_start_time_seconds{job=\"report-service\"}[5m])",
+        "enable": true,
+        "iconColor": "#5794F2",
+        "tags": ["deployment"]
+      }
+    ]
+  },
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1
+}
