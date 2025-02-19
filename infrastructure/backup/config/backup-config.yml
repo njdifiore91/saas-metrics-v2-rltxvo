@@ -1,0 +1,53 @@
+# Backup Configuration for Startup Metrics Platform
+# Version: 1.0.0
+# Dependencies:
+# - postgresql-client v14
+# - openssl v1.1.1
+
+# Database connection settings
+database:
+  host: localhost
+  port: 5432
+  name: startup_metrics
+  max_connections: 100
+  ssl_mode: verify-full
+
+# Backup configuration settings
+backup:
+  base_directory: /backup/postgresql
+  compression_level: 9
+  parallel_jobs: 4
+  buffer_size: 8MB
+  full_backup_day: 7  # Sunday
+  min_required_space_gb: 50
+  verify_checksum: true
+
+# Encryption configuration
+encryption:
+  enabled: true
+  algorithm: AES-256-CBC
+  key_path: /etc/backup/keys/backup.key
+  key_rotation_days: 90
+
+# Backup retention policy
+retention:
+  daily_backups: 7    # Keep last 7 daily backups
+  weekly_backups: 4   # Keep last 4 weekly backups
+  monthly_backups: 12 # Keep last 12 monthly backups
+  min_backups: 3      # Minimum number of backups to retain
+  cleanup_schedule: "0 2 * * *"  # Run cleanup at 2 AM daily
+
+# Logging configuration
+logging:
+  directory: /var/log/backup
+  level: INFO
+  max_size: 100MB
+  max_files: 10
+  notify_on_error: true
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  metrics_prefix: backup
+  alert_on_failure: true
+  prometheus_endpoint: /metrics
