@@ -1,0 +1,167 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CI: true
+  NODE_ENV: test
+  FORCE_COLOR: true
+  NODE_VERSION: '18.x'
+  COVERAGE_THRESHOLD: '80'
+
+jobs:
+  lint_and_test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+          key: npm-deps-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-deps-
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --workspace=@startup-metrics/backend
+          npm ci --workspace=startup-metrics-platform-web
+
+      - name: Run ESLint
+        run: |
+          npm run lint --workspace=@startup-metrics/backend
+          npm run lint --workspace=startup-metrics-platform-web
+
+      - name: Check TypeScript compilation
+        run: |
+          npm run typecheck --workspace=startup-metrics-platform-web
+          tsc --noEmit --project src/backend/tsconfig.json
+
+      - name: Run unit tests
+        run: |
+          npm run test --workspace=@startup-metrics/backend
+          npm run test --workspace=startup-metrics-platform-web
+
+      - name: Run integration tests
+        run: |
+          npm run test:integration --workspace=@startup-metrics/backend
+          npm run test:integration --workspace=startup-metrics-platform-web
+
+      - name: Generate coverage reports
+        run: |
+          npm run test:coverage --workspace=@startup-metrics/backend
+          npm run test:coverage --workspace=startup-metrics-platform-web
+
+      - name: Check coverage thresholds
+        run: |
+          npx istanbul check-coverage --statements ${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            coverage/
+            junit.xml
+
+  security_scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, typescript
+
+      - name: Run dependency vulnerability scan
+        run: |
+          npm audit
+          npm audit --workspace=@startup-metrics/backend
+          npm audit --workspace=startup-metrics-platform-web
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:javascript"
+
+      - name: Run SAST scan
+        uses: github/codeql-action/analyze@v2
+        with:
+          queries: security-extended,security-and-quality
+
+      - name: Upload security results
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            results/
+            sarif/
+
+  build:
+    name: Build Applications
+    needs: [lint_and_test, security_scan]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+          key: npm-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Build backend
+        run: npm run build --workspace=@startup-metrics/backend
+
+      - name: Build frontend
+        run: npm run build --workspace=startup-metrics-platform-web
+
+      - name: Validate builds
+        run: |
+          test -d src/backend/dist
+          test -d src/web/dist
+
+      - name: Analyze bundle size
+        run: |
+          npx source-map-explorer src/web/dist/**/*.js
+          du -h src/backend/dist
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: |
+            src/backend/dist/
+            src/web/dist/
+            bundle-analysis.json
