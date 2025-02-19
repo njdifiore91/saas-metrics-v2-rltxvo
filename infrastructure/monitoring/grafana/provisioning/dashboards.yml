@@ -1,0 +1,15 @@
+apiVersion: 1
+
+providers:
+  - name: startup-metrics-dashboards
+    orgId: 1
+    folder: Startup Metrics
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 60
+    allowUiUpdates: false
+    options:
+      # Path to dashboard JSON files
+      path: /var/lib/grafana/dashboards
+      # Use folder structure from filesystem
+      foldersFromFilesStructure: true
