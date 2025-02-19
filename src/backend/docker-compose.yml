@@ -1,0 +1,171 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    build:
+      context: ./src/api-gateway
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: development
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - RATE_LIMIT_WINDOW=15m
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - METRICS_SERVICE_URL=http://metrics-service:3002
+    depends_on:
+      - redis
+      - auth-service
+      - metrics-service
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  auth-service:
+    build:
+      context: ./src/auth-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/startup_metrics
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: 384M
+        reservations:
+          cpus: "0.15"
+          memory: 192M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  metrics-service:
+    build:
+      context: ./src/metrics-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/startup_metrics
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.40"
+          memory: 448M
+        reservations:
+          cpus: "0.20"
+          memory: 224M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=startup_metrics
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
+        reservations:
+          cpus: "0.50"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:6.2-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /data/postgres
+      o: bind
+  redis_data:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge
+    enable_ipv6: true
+    internal: true
+    attachable: true
+    labels:
+      com.startup.metrics.description: "Backend services network"
+    driver_opts:
+      com.docker.network.bridge.name: "startup-metrics-backend"
