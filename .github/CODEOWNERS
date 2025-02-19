@@ -1,0 +1,46 @@
+* @startup-metrics/platform-admins
+
+# Backend team ownership for all backend code
+/src/backend/ @startup-metrics/backend-team
+
+# Frontend team ownership for all web application code
+/src/web/ @startup-metrics/frontend-team
+
+# QA team ownership for test directory
+/src/test/ @startup-metrics/qa-team
+
+# DevOps team ownership for all Terraform files
+*.tf @startup-metrics/devops-team
+
+# DevOps team ownership for infrastructure configuration
+/infrastructure/ @startup-metrics/devops-team
+
+# Dual ownership of auth service by security and backend teams
+/src/backend/src/auth-service/ @startup-metrics/security-team @startup-metrics/backend-team
+
+# Dual ownership of metrics service by metrics and backend teams
+/src/backend/src/metrics-service/ @startup-metrics/metrics-team @startup-metrics/backend-team
+
+# Dual ownership of report service by reporting and backend teams
+/src/backend/src/report-service/ @startup-metrics/reporting-team @startup-metrics/backend-team
+
+# QA team ownership for all test files
+*.test.ts @startup-metrics/qa-team
+
+# QA team ownership for all E2E test specifications
+*.spec.ts @startup-metrics/qa-team
+
+# Database team ownership for Prisma schema and migrations
+/src/backend/prisma/ @startup-metrics/database-team
+
+# Security team ownership for dependency management
+package.json package-lock.json @startup-metrics/security-team
+
+# DevOps team ownership for all Kubernetes and configuration files
+*.yaml @startup-metrics/devops-team
+
+# DevOps team ownership for CI/CD workflows
+.github/workflows/ @startup-metrics/devops-team
+
+# Platform administrators ownership for CODEOWNERS file
+.github/CODEOWNERS @startup-metrics/platform-admins
