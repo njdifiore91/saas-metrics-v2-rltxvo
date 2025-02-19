@@ -1,0 +1,167 @@
+version: '3.8'
+
+services:
+  # API Gateway Test Service
+  api-gateway-test:
+    build:
+      context: ../backend/src/api-gateway
+      dockerfile: Dockerfile
+      target: test
+    ports:
+      - "3100:3000"
+    environment:
+      - NODE_ENV=test
+      - PORT=3000
+      - TEST_MODE=true
+      - LOG_LEVEL=debug
+      - REDIS_URL=redis://redis-test:6379
+      - DATABASE_URL=postgresql://test_user:test_password@postgres-test:5432/startup_metrics_test
+      - JWT_SECRET=test_secret
+      - ENABLE_TEST_ENDPOINTS=true
+    depends_on:
+      auth-service-test:
+        condition: service_healthy
+      metrics-service-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - test_artifacts:/usr/src/app/test-results
+    networks:
+      - test_network
+    mem_limit: 512m
+    mem_reservation: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Auth Service Test
+  auth-service-test:
+    build:
+      context: ../backend/src/auth-service
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - TEST_MODE=true
+      - LOG_LEVEL=debug
+      - REDIS_URL=redis://redis-test:6379
+      - DATABASE_URL=postgresql://test_user:test_password@postgres-test:5432/startup_metrics_test
+      - GOOGLE_OAUTH_CLIENT_ID=test_client_id
+      - GOOGLE_OAUTH_CLIENT_SECRET=test_client_secret
+    depends_on:
+      redis-test:
+        condition: service_healthy
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - test_artifacts:/usr/src/app/test-results
+    networks:
+      - test_network
+    mem_limit: 512m
+    mem_reservation: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL Test Database
+  postgres-test:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_DB=startup_metrics_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d startup_metrics_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test_network
+    mem_limit: 1g
+    mem_reservation: 512m
+    command: 
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Test Cache
+  redis-test:
+    image: redis:6.2-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - test_network
+    mem_limit: 512m
+    mem_reservation: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_test_data:
+    name: startup-metrics-postgres-test-data
+    labels:
+      com.startup.environment: "test"
+      com.startup.cleanup.policy: "retain-7-days"
+  redis_test_data:
+    name: startup-metrics-redis-test-data
+    labels:
+      com.startup.environment: "test"
+      com.startup.cleanup.policy: "retain-7-days"
+  test_artifacts:
+    name: startup-metrics-test-artifacts
+    labels:
+      com.startup.environment: "test"
+      com.startup.cleanup.policy: "retain-24-hours"
+
+networks:
+  test_network:
+    name: startup-metrics-test-network
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+    labels:
+      com.startup.environment: "test"
+      com.startup.security.policy: "isolated"
+    driver_opts:
+      com.docker.network.bridge.name: "test-net"
+      com.docker.network.driver.mtu: "1500"
