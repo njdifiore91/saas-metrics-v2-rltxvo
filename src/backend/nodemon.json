@@ -1,0 +1,26 @@
+{
+  "watch": [
+    "src/backend/src/admin-service/src/**/*.ts",
+    "src/backend/src/auth-service/src/**/*.ts",
+    "src/backend/src/metrics-service/src/**/*.ts",
+    "src/backend/src/report-service/src/**/*.ts",
+    "src/backend/src/api-gateway/src/**/*.ts",
+    "src/backend/src/shared/**/*.ts"
+  ],
+  "ext": ".ts,.js,.json",
+  "ignore": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/test"
+  ],
+  "exec": "ts-node -r tsconfig-paths/register ./src/backend/src/api-gateway/src/app.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "verbose": true,
+  "restartable": "rs",
+  "delay": 1000
+}
