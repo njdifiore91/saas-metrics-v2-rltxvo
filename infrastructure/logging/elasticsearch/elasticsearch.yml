@@ -1,0 +1,88 @@
+# Elasticsearch Configuration v7.17.0
+# Startup Metrics Benchmarking Platform
+
+#----------------------
+# Cluster Settings
+#----------------------
+cluster.name: startup-metrics-es-cluster
+cluster.initial_master_nodes: 
+  - es-node-1
+  - es-node-2
+  - es-node-3
+discovery.seed_hosts: 
+  - es-node-1
+  - es-node-2
+  - es-node-3
+discovery.zen.minimum_master_nodes: 2
+
+# Disk-based shard allocation
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: "85%"
+cluster.routing.allocation.disk.watermark.high: "90%"
+
+# Zone awareness
+cluster.routing.allocation.awareness.attributes: zone
+cluster.routing.allocation.enable: all
+
+#----------------------
+# Node Settings
+#----------------------
+node.name: ${NODE_NAME}
+node.master: true
+node.data: true
+node.ingest: true
+node.max_local_storage_nodes: 1
+bootstrap.memory_lock: true
+node.attr.zone: ${NODE_ZONE}
+
+#----------------------
+# Network Settings
+#----------------------
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# CORS settings
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+
+# TCP settings
+network.tcp.no_delay: true
+network.tcp.keep_alive: true
+network.tcp.reuse_address: true
+
+#----------------------
+# Security Settings
+#----------------------
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.keystore.path: /etc/elasticsearch/certs/elastic-certificates.p12
+xpack.security.transport.ssl.truststore.path: /etc/elasticsearch/certs/elastic-certificates.p12
+
+# Audit and API key settings
+xpack.security.audit.enabled: true
+xpack.security.authc.api_key.enabled: true
+
+#----------------------
+# Resource Settings
+#----------------------
+bootstrap.system_call_filter: true
+
+# Thread pool settings
+thread_pool.write.queue_size: 1000
+thread_pool.search.queue_size: 1000
+
+# Memory and cache settings
+indices.memory.index_buffer_size: "30%"
+indices.queries.cache.size: "20%"
+indices.recovery.max_bytes_per_sec: "50mb"
+indices.fielddata.cache.size: "15%"
+
+#----------------------
+# Monitoring Settings
+#----------------------
+xpack.monitoring.collection.enabled: true
+xpack.monitoring.elasticsearch.collection.enabled: true
+xpack.monitoring.collection.interval: "30s"
+xpack.monitoring.history.duration: "7d"
