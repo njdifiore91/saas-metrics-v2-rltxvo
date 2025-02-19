@@ -1,0 +1,76 @@
+# Kibana Configuration v7.17.0
+# Startup Metrics Benchmarking Platform
+
+#----------------------
+# Server Settings
+#----------------------
+server.name: startup-metrics-kibana
+server.host: "0.0.0.0"
+server.port: 5601
+server.basePath: ""
+server.maxPayloadBytes: 1048576
+server.rewriteBasePath: false
+
+#----------------------
+# Elasticsearch Settings
+#----------------------
+elasticsearch.hosts: 
+  - "http://es-node-1:9200"
+  - "http://es-node-2:9200"
+  - "http://es-node-3:9200"
+elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
+elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+elasticsearch.requestTimeout: 30000
+elasticsearch.shardTimeout: 30000
+elasticsearch.ssl.verificationMode: "certificate"
+elasticsearch.ssl.certificateAuthorities: 
+  - "/etc/kibana/certs/ca.crt"
+
+#----------------------
+# Security Settings
+#----------------------
+xpack.security.enabled: true
+xpack.security.encryptionKey: "${SECURITY_ENCRYPTION_KEY}"
+xpack.security.session.idleTimeout: "1h"
+xpack.security.session.lifespan: "24h"
+xpack.security.audit.enabled: true
+xpack.security.audit.appender.type: "json_file"
+xpack.security.audit.appender.path: "/var/log/kibana/security-audit.json"
+xpack.security.audit.appender.layout.type: "json"
+
+#----------------------
+# Monitoring Settings
+#----------------------
+monitoring.ui.container.elasticsearch.enabled: true
+xpack.monitoring.enabled: true
+xpack.monitoring.kibana.collection.enabled: true
+xpack.monitoring.collection.enabled: true
+xpack.monitoring.collection.interval: "15s"
+xpack.monitoring.min_interval_seconds: 10
+
+#----------------------
+# Logging Settings
+#----------------------
+logging.dest: "/var/log/kibana/kibana.log"
+logging.silent: false
+logging.quiet: false
+logging.verbose: false
+logging.json: true
+logging.rotate:
+  enabled: true
+  keepFiles: 7
+  pollInterval: 10000
+  rotateInterval: "1d"
+  size: "100mb"
+logging.events:
+  ops: ["error", "warning"]
+  request: ["error", "warning", "info"]
+  response: ["error", "warning", "info"]
+  error: ["*"]
+
+#----------------------
+# Telemetry Settings
+#----------------------
+telemetry.enabled: false
+telemetry.optIn: false
+telemetry.optInStatusUrl: ""
