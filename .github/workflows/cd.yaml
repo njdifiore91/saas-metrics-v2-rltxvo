@@ -1,0 +1,187 @@
+name: Continuous Deployment
+
+on:
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    types:
+      - completed
+    branches:
+      - main
+
+env:
+  TF_VERSION: "1.0.0"
+  NODE_VERSION: "18.x"
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  CLUSTER_NAME: "startup-metrics"
+  DEPLOY_TIMEOUT: "600"
+  HEALTH_CHECK_RETRIES: "5"
+
+jobs:
+  deploy_staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency: staging_environment
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Initialize Terraform
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init
+          terraform workspace select staging
+
+      - name: Apply Terraform Changes
+        working-directory: infrastructure/terraform
+        run: |
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+        env:
+          TF_WORKSPACE: staging
+          TF_VAR_environment: staging
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.CLUSTER_NAME }}-staging
+        env:
+          KUBECONFIG: ~/.kube/config
+
+      - name: Deploy to Staging
+        run: |
+          kubectl apply -f k8s/staging/ --prune -l app=startup-metrics
+          kubectl rollout status deployment/startup-metrics-backend -n staging --timeout=${{ env.DEPLOY_TIMEOUT }}s
+          kubectl rollout status deployment/startup-metrics-frontend -n staging --timeout=${{ env.DEPLOY_TIMEOUT }}s
+
+      - name: Run Health Checks
+        run: |
+          for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+            if curl -f https://staging-api.startupmetrics.com/health; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Configure Monitoring
+        run: |
+          curl -X POST https://api.datadoghq.com/api/v1/dashboard \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d @monitoring/staging-dashboard.json
+
+  deploy_production:
+    name: Deploy to Production
+    needs: deploy_staging
+    runs-on: ubuntu-latest
+    environment: 
+      name: production
+      url: https://app.startupmetrics.com
+    concurrency: production_environment
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 3600
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Initialize Terraform
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init
+          terraform workspace select production
+
+      - name: Apply Terraform Changes
+        working-directory: infrastructure/terraform
+        run: |
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+        env:
+          TF_WORKSPACE: production
+          TF_VAR_environment: production
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.CLUSTER_NAME }}-production
+        env:
+          KUBECONFIG: ~/.kube/config
+
+      - name: Deploy to Production
+        run: |
+          kubectl apply -f k8s/production/ --prune -l app=startup-metrics
+          kubectl rollout status deployment/startup-metrics-backend -n production --timeout=${{ env.DEPLOY_TIMEOUT }}s
+          kubectl rollout status deployment/startup-metrics-frontend -n production --timeout=${{ env.DEPLOY_TIMEOUT }}s
+
+      - name: Verify Deployment
+        run: |
+          for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+            if curl -f https://api.startupmetrics.com/health; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Update DNS Records
+        run: |
+          aws route53 change-resource-record-sets \
+            --hosted-zone-id ${{ secrets.ROUTE53_ZONE_ID }} \
+            --change-batch file://dns/production-update.json
+
+      - name: Update Monitoring
+        run: |
+          curl -X POST https://api.datadoghq.com/api/v1/dashboard \
+            -H "Content-Type: application/json" \
+            -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+            -d @monitoring/production-dashboard.json
+
+      - name: Notify Deployment Status
+        if: always()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"Production deployment ${{ job.status }}: ${{ github.repository }}\"}"
