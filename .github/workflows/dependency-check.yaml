@@ -1,0 +1,137 @@
+name: Dependency Security Check
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly at midnight on Sunday
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+jobs:
+  security_scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      - name: Install global dependencies
+        run: |
+          npm install -g npm-audit-resolver
+          npm install -g npm-check
+          npm install -g snyk
+
+      - name: Scan backend dependencies
+        id: backend-scan
+        working-directory: src/backend
+        run: |
+          echo "::group::Backend Dependency Scan"
+          
+          # Run npm audit
+          npm audit --json > backend-audit.json || true
+          
+          # Check outdated packages
+          npm-check --json > backend-outdated.json || true
+          
+          # Run Snyk scan
+          snyk test --json > backend-snyk.json || true
+          
+          # Generate summary report
+          {
+            echo "BACKEND SECURITY SCAN SUMMARY"
+            echo "============================"
+            echo "Audit Results:"
+            jq -r '.advisories | length' backend-audit.json
+            echo "Outdated Packages:"
+            jq -r '.packages | length' backend-outdated.json
+            echo "Snyk Vulnerabilities:"
+            jq -r '.vulnerabilities | length' backend-snyk.json
+          } > backend-summary.txt
+          echo "::endgroup::"
+
+      - name: Scan frontend dependencies
+        id: frontend-scan
+        working-directory: src/web
+        run: |
+          echo "::group::Frontend Dependency Scan"
+          
+          # Run npm audit
+          npm audit --json > frontend-audit.json || true
+          
+          # Check outdated packages
+          npm-check --json > frontend-outdated.json || true
+          
+          # Run Snyk scan
+          snyk test --json > frontend-snyk.json || true
+          
+          # Generate summary report
+          {
+            echo "FRONTEND SECURITY SCAN SUMMARY"
+            echo "============================"
+            echo "Audit Results:"
+            jq -r '.advisories | length' frontend-audit.json
+            echo "Outdated Packages:"
+            jq -r '.packages | length' frontend-outdated.json
+            echo "Snyk Vulnerabilities:"
+            jq -r '.vulnerabilities | length' frontend-snyk.json
+          } > frontend-summary.txt
+          echo "::endgroup::"
+
+      - name: Create GitHub issue for vulnerabilities
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read scan results
+            const backendSummary = fs.readFileSync('src/backend/backend-summary.txt', 'utf8');
+            const frontendSummary = fs.readFileSync('src/web/frontend-summary.txt', 'utf8');
+            
+            // Create issue
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Weekly Dependency Security Scan Results - ${new Date().toISOString().split('T')[0]}`,
+              body: `
+            ## Dependency Security Scan Results
+            
+            ### Backend Services
+            \`\`\`
+            ${backendSummary}
+            \`\`\`
+            
+            ### Frontend Application
+            \`\`\`
+            ${frontendSummary}
+            \`\`\`
+            
+            Please review the attached scan results and take necessary actions to address any vulnerabilities.
+            
+            [View full scan results in workflow artifacts](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            `,
+              labels: ['security', 'dependencies']
+            });
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-scan-results
+          path: |
+            src/backend/backend-*.json
+            src/backend/backend-summary.txt
+            src/web/frontend-*.json
+            src/web/frontend-summary.txt
+          retention-days: 90
