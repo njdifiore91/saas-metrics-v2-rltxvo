@@ -1,0 +1,120 @@
+# Alertmanager Configuration v0.25.0
+# Comprehensive alert management configuration for the Startup Metrics Benchmarking Platform
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: smtp.company.com:587
+  smtp_from: alertmanager@company.com
+  smtp_auth_username: '{{ smtp_auth_username }}'
+  smtp_auth_password: '{{ smtp_auth_password }}'
+  slack_api_url: '{{ slack_webhook_url }}'
+  pagerduty_url: https://events.pagerduty.com/v2/enqueue
+  http_config:
+    timeout: 10s
+    proxy_url: '{{ http_proxy }}'
+
+templates:
+  - name: alert_subject
+    template: |
+      {{ define "alert_subject" }}[{{ .Status | toUpper }}][{{ .CommonLabels.severity | toUpper }}] {{ .GroupLabels.alertname }} - {{ .CommonLabels.service }}{{ end }}
+  - name: alert_body
+    template: |
+      {{ define "alert_body" }}
+      Alert: {{ .GroupLabels.alertname }}
+      Status: {{ .Status }}
+      Severity: {{ .CommonLabels.severity }}
+      Service: {{ .CommonLabels.service }}
+      Environment: {{ .CommonLabels.environment }}
+
+      Description: {{ .CommonAnnotations.description }}
+
+      Impact: {{ .CommonAnnotations.impact }}
+      Recommended Action: {{ .CommonAnnotations.action }}
+
+      Alerts:
+      {{ range .Alerts }}
+        * {{ .Annotations.summary }}
+        Started: {{ .StartsAt }}
+        {{ if .EndsAt }}Ended: {{ .EndsAt }}{{ end }}
+      {{ end }}
+      {{ end }}
+
+route:
+  # Default routing configuration
+  group_by: ['alertname', 'service', 'environment']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: default-receiver
+
+  routes:
+    # Critical disaster recovery alerts
+    - match:
+        severity: critical
+        impact: disaster_recovery
+      receiver: pager-duty-critical
+      group_wait: 0s
+      repeat_interval: 1h
+      continue: true
+
+    # Critical performance alerts
+    - match:
+        severity: critical
+        service: performance
+      receiver: pager-duty-critical
+      group_wait: 0s
+      repeat_interval: 1h
+
+    # Warning level alerts
+    - match:
+        severity: warning
+      receiver: slack-warnings
+      group_wait: 30s
+      repeat_interval: 4h
+
+receivers:
+  # Default email receiver
+  - name: default-receiver
+    email_configs:
+      - to: monitoring-team@company.com
+        send_resolved: true
+        html: '{{ template "alert_body" . }}'
+        subject: '{{ template "alert_subject" . }}'
+        require_tls: true
+
+  # PagerDuty critical alerts receiver
+  - name: pager-duty-critical
+    pagerduty_configs:
+      - routing_key: '{{ pagerduty_service_key }}'
+        send_resolved: true
+        description: '{{ template "alert_body" . }}'
+        severity: '{{ .CommonLabels.severity }}'
+        client: 'Startup Metrics Platform'
+        client_url: '{{ .ExternalURL }}'
+    email_configs:
+      - to: emergency-response@company.com
+        send_resolved: true
+        html: '{{ template "alert_body" . }}'
+        subject: '{{ template "alert_subject" . }}'
+
+  # Slack warnings receiver
+  - name: slack-warnings
+    slack_configs:
+      - channel: '#platform-alerts'
+        send_resolved: true
+        title: '{{ template "alert_subject" . }}'
+        text: '{{ template "alert_body" . }}'
+        actions:
+          - type: button
+            text: View Alert
+            url: '{{ .ExternalURL }}'
+
+inhibit_rules:
+  # Prevent warning notifications when critical alerts are firing
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['alertname', 'service', 'environment']
+    target_match_re:
+      alertname: '.*'
