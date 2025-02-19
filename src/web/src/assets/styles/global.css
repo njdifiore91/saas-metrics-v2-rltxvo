@@ -1,0 +1,174 @@
+/* Import design system variables */
+@import './variables.css';
+
+/* Import Inter font family v4.5.0 */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/700.css';
+
+/* Reset and base styles */
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-family-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-display: swap;
+}
+
+* {
+  box-sizing: inherit;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: var(--line-height-base);
+  min-height: 100vh;
+  scroll-behavior: smooth;
+}
+
+/* Typography and links */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast) var(--transition-timing);
+}
+
+a:hover {
+  text-decoration: underline;
+  color: var(--color-primary-hover);
+}
+
+a:active {
+  color: var(--color-primary-active);
+}
+
+/* Form elements */
+button, 
+input, 
+select, 
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+/* Focus states and accessibility */
+:focus {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(22, 137, 71, 0.3);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(22, 137, 71, 0.3);
+}
+
+/* Utility classes */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0,0,0,0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-base);
+  box-sizing: content-box;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--color-primary);
+  color: white;
+  padding: var(--spacing-small) var(--spacing-medium);
+  z-index: var(--z-index-fixed);
+  transition: top var(--transition-fast) var(--transition-timing);
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Responsive media queries */
+@media screen and (min-width: var(--breakpoint-tablet)) {
+  .container {
+    padding: 0 var(--spacing-medium);
+  }
+}
+
+@media screen and (min-width: var(--breakpoint-desktop)) {
+  .container {
+    padding: 0 var(--spacing-large);
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  * {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  :focus {
+    outline: 2px solid black !important;
+    box-shadow: none !important;
+  }
+  
+  a {
+    text-decoration: underline !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  a {
+    color: black;
+    text-decoration: underline;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+}
