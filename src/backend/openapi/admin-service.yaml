@@ -1,0 +1,539 @@
+openapi: 3.0.0
+info:
+  title: Admin Service API
+  version: 1.0.0
+  description: |
+    Secure API for managing administrator users in the Startup Metrics Benchmarking Platform.
+    Provides comprehensive user management capabilities with role-based access control and audit logging.
+  contact:
+    name: Platform Support
+    email: support@startupmetrics.com
+
+servers:
+  - url: /api/v1
+    description: Production API server
+  - url: /api/v1/staging
+    description: Staging API server
+
+tags:
+  - name: admins
+    description: Admin user management operations with security controls
+  - name: audit
+    description: Audit logging and activity tracking
+
+paths:
+  /admins:
+    get:
+      summary: List all admin users with pagination
+      operationId: listAdmins
+      tags: [admins]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of items per page
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [name, email, createdAt, lastLoginAt]
+            default: createdAt
+          description: Field to sort results by
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order
+      responses:
+        '200':
+          description: Successfully retrieved list of admin users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create a new admin user
+      operationId: createAdmin
+      tags: [admins]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreate'
+      responses:
+        '201':
+          description: Admin user successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admins/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Admin user ID
+    
+    get:
+      summary: Get admin user details
+      operationId: getAdmin
+      tags: [admins]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved admin user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      summary: Update admin user details
+      operationId: updateAdmin
+      tags: [admins]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdate'
+      responses:
+        '200':
+          description: Admin user successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admin'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Delete admin user
+      operationId: deleteAdmin
+      tags: [admins]
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Admin user successfully deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admins/audit-logs:
+    get:
+      summary: Get admin activity audit logs
+      operationId: getAdminAuditLogs
+      tags: [audit]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start date for audit log filtering
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End date for audit log filtering
+        - name: adminId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter logs by specific admin ID
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [CREATE, UPDATE, DELETE, LOGIN]
+          description: Filter logs by action type
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of items per page
+      responses:
+        '200':
+          description: Successfully retrieved audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Admin:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the admin user
+        email:
+          type: string
+          format: email
+          description: Admin user's email address
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Admin user's full name
+        role:
+          type: string
+          enum: [ADMIN]
+          description: User role, always ADMIN for this service
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp of user creation
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of last update
+        lastLoginAt:
+          type: string
+          format: date-time
+          description: Timestamp of last login
+        isActive:
+          type: boolean
+          description: Account status flag
+      required:
+        - id
+        - email
+        - name
+        - role
+        - createdAt
+        - updatedAt
+        - isActive
+
+    AdminCreate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: Admin user's email address
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Admin user's full name
+        password:
+          type: string
+          format: password
+          minLength: 12
+          description: Initial password (must meet complexity requirements)
+      required:
+        - email
+        - name
+        - password
+
+    AdminUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Admin user's full name
+        isActive:
+          type: boolean
+          description: Account status flag
+      minProperties: 1
+
+    AdminList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Admin'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - data
+        - pagination
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the audit log entry
+        adminId:
+          type: string
+          format: uuid
+          description: ID of the admin user who performed the action
+        action:
+          type: string
+          enum: [CREATE, UPDATE, DELETE, LOGIN]
+          description: Type of action performed
+        resourceType:
+          type: string
+          description: Type of resource affected
+        resourceId:
+          type: string
+          description: ID of the affected resource
+        changes:
+          type: object
+          description: Details of changes made
+        ipAddress:
+          type: string
+          format: ipv4
+          description: IP address of the admin user
+        timestamp:
+          type: string
+          format: date-time
+          description: When the action occurred
+      required:
+        - id
+        - adminId
+        - action
+        - resourceType
+        - timestamp
+        - ipAddress
+
+    AuditLogList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - data
+        - pagination
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number
+        limit:
+          type: integer
+          minimum: 1
+          description: Items per page
+        totalItems:
+          type: integer
+          minimum: 0
+          description: Total number of items
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+      required:
+        - page
+        - limit
+        - totalItems
+        - totalPages
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code for the specific error type
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details if available
+      required:
+        - code
+        - message
+
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_ERROR]
+          description: Validation error code
+        message:
+          type: string
+          description: General validation error message
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field that failed validation
+              message:
+                type: string
+                description: Specific validation error message
+            required:
+              - field
+              - message
+      required:
+        - code
+        - message
+        - errors
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Bad Request - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    Conflict:
+      description: Conflict - Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    TooManyRequests:
+      description: Too Many Requests - Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Number of seconds to wait before retrying
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token with 1-hour expiration
+
+security:
+  - bearerAuth: []
