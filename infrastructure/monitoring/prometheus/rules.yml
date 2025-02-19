@@ -1,0 +1,96 @@
+# Prometheus Rules Configuration v2.45.0
+# Defines alerting and recording rules for the Startup Metrics Benchmarking Platform
+
+groups:
+  # Service Availability Monitoring
+  - name: service_availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate for {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has error rate above 5% for more than 2 minutes"
+
+  # Performance Monitoring
+  - name: performance
+    rules:
+      - alert: SlowResponseTime
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow response time for {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has average response time above 200ms for 5 minutes"
+
+      - record: job:request_latency_seconds:mean5m
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])
+
+  # Resource Usage Monitoring
+  - name: resources
+    rules:
+      - alert: HighCPUUsage
+        expr: process_cpu_seconds_total > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage for {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has CPU usage above 85% for 5 minutes"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / process_memory_limit_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage for {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has memory usage above 85% for 5 minutes"
+
+  # Database Monitoring
+  - name: database
+    rules:
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_activity_count > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High PostgreSQL connections"
+          description: "PostgreSQL has more than 100 active connections for 5 minutes"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is above 85% for 5 minutes"
+
+  # Business Metrics Monitoring
+  - name: business_metrics
+    rules:
+      - alert: HighConcurrentUsers
+        expr: sum(rate(http_requests_total[5m])) by (job) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High concurrent users for {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has more than 1000 concurrent users for 5 minutes"
+
+      - record: job:user_requests:rate5m
+        expr: sum(rate(http_requests_total[5m])) by (job)
